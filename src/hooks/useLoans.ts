@@ -1,65 +1,68 @@
-"use client";
+'use client'
 
-import { useSession } from "next-auth/react";
-import { useCallback } from "react";
-import API from "@/lib/api";
-import { Loan } from "@/types/Loan";
+import { useSession } from 'next-auth/react'
+import { useCallback } from 'react'
+import API from '@/lib/api'
+import { Loan } from '@/types/Loan'
 
 export function useLoans() {
-	const { data: session } = useSession();
-	const token = session?.user.accessToken ?? "";
-	const userId = Number(session?.user.id);
-	const headers = { Authorization: `Bearer ${token}` };
+  const { data: session } = useSession()
+  const token = session?.user.accessToken ?? ''
+  const userId = Number(session?.user.id)
+  const headers = { Authorization: `Bearer ${token}` }
 
-	const listLoans = useCallback(async (): Promise<Loan[]> => {
-		const rawId = session?.user.id;
-		const userId = Number(rawId);
-		if (!rawId || isNaN(userId)) {
-			return [];
-		}
-		const res = await API.get<Loan[]>(`/loan/byUser/${userId}`, { headers });
-		return res.data;
-	}, [session, token]);
+  const listLoans = useCallback(async (): Promise<Loan[]> => {
+    if (session?.user.role === 'ADMIN') {
+      const res = await API.get<Loan[]>('/loan', { headers })
+      return res.data
+    }
 
-	const getLoan = useCallback(
-		async (id: string): Promise<Loan> => {
-			const res = await API.get<Loan>(`/loan/${id}`, { headers });
-			return res.data;
-		},
-		[token]
-	);
+    const rawId = session?.user.id
+    const uid = Number(rawId)
+    if (!rawId || isNaN(uid)) {
+      return []
+    }
+    const res = await API.get<Loan[]>(`/loan/byUser/${uid}`, { headers })
+    return res.data
+  }, [session, token])
 
-	const requestLoan = useCallback(
-		async (payload: { amount: number; term: number }): Promise<Loan> => {
-			const dto = {
-				amount: payload.amount,
-				status: "PENDING" as const,
-				userId,
-				createdAt: new Date().toISOString(),
-			};
-			const res = await API.post<Loan>("/loan", dto, { headers });
-			return res.data;
-		},
-		[token, userId]
-	);
+  const getLoan = useCallback(
+    async (id: string): Promise<Loan> => {
+      const res = await API.get<Loan>(`/loan/${id}`, { headers })
+      return res.data
+    },
+    [token]
+  )
 
-	const approveLoan = useCallback(
-		async (id: string): Promise<Loan> => {
-			const res = await API.post<Loan>(`/loan/${id}/approve`, null, {
-				headers,
-			});
-			return res.data;
-		},
-		[token]
-	);
+  const requestLoan = useCallback(
+    async (payload: { amount: number; term: number }): Promise<Loan> => {
+      const dto = {
+        amount: payload.amount,
+        status: 'PENDING' as const,
+        userId,
+        createdAt: new Date().toISOString(),
+      }
+      const res = await API.post<Loan>('/loan', dto, { headers })
+      return res.data
+    },
+    [token, userId]
+  )
 
-	const rejectLoan = useCallback(
-		async (id: string): Promise<Loan> => {
-			const res = await API.post<Loan>(`/loan/${id}/reject`, null, { headers });
-			return res.data;
-		},
-		[token]
-	);
+  const approveLoan = useCallback(
+    async (id: string): Promise<Loan> => {
+      const res = await API.post<Loan>(`/loan/${id}/approve`, null, { headers })
+      return res.data
+    },
+    [token]
+  )
 
-	return { listLoans, getLoan, requestLoan, approveLoan, rejectLoan };
+  const rejectLoan = useCallback(
+    async (id: string): Promise<Loan> => {
+      const res = await API.post<Loan>(`/loan/${id}/reject`, null, { headers })
+      return res.data
+    },
+    [token]
+  )
+
+  return { listLoans, getLoan, requestLoan, approveLoan, rejectLoan }
 }
